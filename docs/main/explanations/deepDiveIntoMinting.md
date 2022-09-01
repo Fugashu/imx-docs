@@ -1,4 +1,4 @@
----
+﻿---
 id: "minting-deep-dive"
 title: "Deep Dive into Minting"
 slug: "/minting-deep-dive"
@@ -35,7 +35,9 @@ Which basically means, if the token with the id 42 is minted by user `0x1337...`
 
 ### Minting fungible-tokens
 
-Cryptocurrencies that are minted are fungible tokens and often have no upper supply limit and rely on the continued growth of the project's economic system to remain valuable. Minting cryptocurrencies is similar to minting fiat money in traditional finance and banking in that there is theoretically no upper limit to the amount of money that can be printed, except that printing must be controlled to prevent excessive inflation/devaluation.
+Cryptocurrencies that are minted are fungible tokens and often have no upper supply limit and rely on the continued growth of the project's economic system to remain valuable.
+Minting cryptocurrencies is similar to minting fiat money in traditional finance and banking in that there is theoretically no upper limit to the amount of money that can be printed, except that printing must be controlled to prevent excessive inflation/devaluation.
+On the Ethereum Blockchain the [ERC-20 Standard](https://ethereum.org/en/developers/docs/standards/tokens/erc-20/) is used.
 
 ## The following section describes what happens inside such a smart contract during the mint process:
 
@@ -55,7 +57,7 @@ function _mint(address to, uint256 tokenId) internal virtual {
   // 5. Update the token owner (user by ownerOf(tokenId))
   _owners[tokenId] = to;
 
-  // 6. Emit the Transfer event, which can be queried later
+  // 6. Emit the Transfer event, which can be querried later
   emit Transfer(address(0), to, tokenId);
 
   // 7. Call which can be overwritten by the user
@@ -68,18 +70,22 @@ function _mint(address to, uint256 tokenId) internal virtual {
 3. **Usercallback (beforeTokenTransfer)** - can be overwritten by the user to call a function before a token is transferred
 4. **Update the balance map** - increase the balance of the user by 1 (the amount of minted NFTs)
 5. **Update the owner map** - set the token to be owner by the minting user
-6. **Emit the Transfer event** - events can be looked up in nodes, to verify whether something really occurred on the blockchain. They provide a simple way to communicate to outside services.
+6. **Emit the Transfer event** - events can be looked up in nodes, to verify whether something really occured on the blockchain. They provide a simple way to communicate to outside services.
 7. **Usercallback (afterTokenTransfer)** - can be overwritten by the user to call a function after   a token is transferred
 
 ## Mint, Deposit, Withdrawal
 
 On Immutable assets can be minted on L2 and then be withdrawn to L1, which would be the default and preferred behavior, since it is way cheaper than minting on L1.
 Another option would be to mint the asset on L1 and deposit it to L2.
+An asset minted on L2 can be detected by inspecting the corresponding L1 contract.
+If the contract has a `mintFor` function, which can only be called by the IMX bridge contract, then one can assume that the underlying asset is a L2 minted assset.
+In any other cases it is probably a L1 minted asset.
 
 ### Minting Layer 1
 
 Minting on L1 requires an interaction with the L1 smart contract, and the functions as described above are used.
-L1 minted assets can then be deposited to L2 by interacting with the Immutable bridge contract. A user-friendly implementation of the bridge can be found [here](https://imxwallet.tools/).
+L1 minted assets can then be deposited to L2 by interacting with the Immutable bridge contract. 
+A user-friendly implementation of the bridge can be found [here](https://imxwallet.tools/).
 If assets are minted on L1 they can not be actively minted on L2, only during a deposit.
 
 ### Minting Immutable Layer 2
@@ -122,6 +128,25 @@ In the following the minting payload is shown, which is required for the RPC cal
 }
 ```
 
+So far IMX has only fees for sales on the marketplace, as of right now those are 2% of the spend currency.
+Transfers and mints are free, therefore it doesn't matter whether NFTs are minted in a batch, and then transferred to a user wallet, or minted directly to a user wallet.
+
+The maximum amount of tokens which can be minted is the highest number of a `uint256`.
+So it is probably even impossible to mint out this amount of tokens in the entire lifetime.
+
+### Sales on Immutable Layer 2
+
+Generally, on L1 there are two types of mints, a whitelist mint, aka. only people with a certain address can mint, and a public mint where everyone is allowed to mint.
+As stated only the contract deployer is allowed to mint on IMX.
+This opens the challenge on how to conduct a whitelist and a public sale on IMX.
+As per the public sale, one could pre-mint the NFTs and put them in the marketplace, which is almost the same behavior as a direct mint.
+Whitelist sales on the other hand are not realizable through the marketplace.
+Though they are not impossible.
+
+Whitelist sales can be realized through a centralized backend, which tracks deposits on a certain address.
+When a deposit is detected and the depositor address is an address on the whitelist, a mint is issued to the depositor address.
+From a user perspective it feels almost the same like a normal L1 mint, still one has to to admit that this is a centralized approach which is prone to errors and hacks.
+
 ## Cost of Minting
 
 ### Minting fees Layer 1
@@ -144,13 +169,21 @@ So, you want to mint your first NFT? Make sure your setup meets the requirements
 
 ### Requirements Layer 1
 
-- A crypto wallet capable of managing ERC-20 and ERC-721 tokens: The most common and widely adopted solution is [Metamask](https://metamask.io/). Metamask can be installed as a browser addon and is set up in a few easy steps as described [here](https://metamask.zendesk.com/hc/en-us/articles/360015489531-Getting-Started-With-MetaMask).
+Project owner:
+- Your ERC-721 smart contract must be deployed on the Ethereum Blockchain. You can read about contract deployment [here](https://ethereum.org/en/developers/docs/smart-contracts/deploying/#how-to-deploy-a-smart-contract).
+
+Users/Minters:
+- A crypto wallet capable of managing ERC-20 and ERC-721 tokens: The most common and widely adopted solution is [Metamask](https://metamask.io/). Metamask can be installed as a browser addon and is setup in a few easy steps as described [here](https://metamask.zendesk.com/hc/en-us/articles/360015489531-Getting-Started-With-MetaMask).
 - A positive L1 ETH balance: In order to mint an NFT on L1 your account needs to possess enough ETH to pay for the NFT you are about to mint plus an additional gas fee, which is paid to the miners. You can find rough updated estimates on minting transaction costs [here](https://www.gwei.at/).
 
 ### Requirements Immutable Layer 2
 
+Project owner:
+- The collection must be registered on Immutable X. Read about the process [here](https://docs.x.immutable.com/docs/onboarding/).
+- Make sure your customers/users [registered their wallets] (https://support.immutable.com/hc/en-us/articles/360062010454-Creating-a-new-Immutable-X-Key) on Immutable X.
+Minters:
 - Immutable X Key: Your crypto wallet must be setup with Immutable in order to authorize transactions and confirm your identity. The Immutable X Key will act as an extension to your Ethereum wallet. A step-by-step guide with visual information is available [here](https://support.immutable.com/hc/en-us/articles/360062010454-Creating-a-new-Immutable-X-Key).
-- A positive L2 ETH balance: In order to mint an NFT on L2 your account needs to possess enough ETH to pay for the NFT you are about to mint plus a negligible amount of ETH dust, in order to trigger a transaction. You can transfer your L1 ETH to L2 by following [this guide](https://support.immutable.com/hc/en-us/articles/360062011474-Depositing-ETH-to-Immutable-X).
+- A positive L2 ETH balance: In order to mint an NFT on L2 your account needs to posess enough ETH to pay for the NFT you are about to mint plus a negligible amount of ETH dust, in order to trigger a transaction. You can transfer your L1 ETH to L2 by following [this guide](https://support.immutable.com/hc/en-us/articles/360062011474-Depositing-ETH-to-Immutable-X).
 
 
 After these steps are completed, you are ready to mint your NFT on L1 or Immutable L2!
